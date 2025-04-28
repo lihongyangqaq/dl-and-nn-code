@@ -21,10 +21,11 @@ class RunnerM():
         self.dev_loss = []
         self.best_score = 0
 
+
     def train(self, train_set, dev_set, **kwargs):
         # 参数设置
-        num_epochs = kwargs.get("num_epochs", 100)
-        eval_interval = kwargs.get("eval_interval", 100)  # 评估间隔
+        num_epochs = kwargs.get("num_epochs", 5)
+        eval_interval = kwargs.get("eval_interval", 1000)  # 评估间隔
         save_dir = kwargs.get("save_dir", "best_model")
 
         # 创建保存目录
@@ -73,7 +74,7 @@ class RunnerM():
 
                     # 更新最佳模型
                     if dev_score > self.best_score:
-                        self.save_model(os.path.join(save_dir, 'best_model_MLP.pickle'))
+                        self.model.save_model(os.path.join(save_dir, 'best_model_CNN4visual.pickle'))
                         self.best_score = dev_score
                         pbar.write(f'🌟 New best accuracy: {self.best_score:.4f}')
 
@@ -103,15 +104,6 @@ class RunnerM():
         # 计算平均损失和得分
         return total_score,total_loss
 
-    def save_model(self, save_path):
-        """保存模型（包含优化器状态）"""
-        with open(save_path, 'wb') as f:
-            pickle.dump({
-                'model': self.model,
-                'optimizer': self.optimizer,
-                'scheduler': self.scheduler,
-                'best_score': self.best_score
-            }, f)
 
     def _shuffle_data(self, X, y):
         """打乱数据"""

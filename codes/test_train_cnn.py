@@ -47,7 +47,7 @@ cnn_model = nn.models.Model_CNN(
     lambda_list=[1e-4,1e-4,1e-4,1e-4,1e-4]  # 对应5个可训练层
 )
 
-optimizer = nn.optimizer.SGD(init_lr=0.07, model=cnn_model)
+optimizer = nn.optimizer.SGD(init_lr=0.1, model=cnn_model)
 #optimizer = nn.optimizer.MomentGD(init_lr=0.06, model=cnn_model,beta=0.9)
 scheduler = nn.lr_scheduler.MultiStepLR(optimizer=optimizer,
                                         milestones=[800, 2400, 4000],
@@ -62,7 +62,7 @@ runner = nn.runner.RunnerM(cnn_model, optimizer,
 
 runner.train([train_imgs, train_labs],
              [valid_imgs, valid_labs],
-             num_epochs=300,
+             num_epochs=5,
              log_iters=10000,
              save_dir=r'./best_models')
 

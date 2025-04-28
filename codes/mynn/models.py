@@ -43,6 +43,7 @@ class Model_MLP(Layer):
     def load_model(self, param_list):
         with open(param_list, 'rb') as f:
             param_list = pickle.load(f)
+            print(param_list)
         self.size_list = param_list[0]
         self.act_func = param_list[1]
 
@@ -88,6 +89,7 @@ class Model_CNN(Layer):
         self.layers = []
         self.input_shape = input_shape
         self.num_classes = num_classes
+
 
         # 第一卷积层: 1x28x28 -> 6x24x24 (kernel=5x5)
         conv1 = Conv2D(in_channels=input_shape[0], out_channels=6,
@@ -164,4 +166,117 @@ class Model_CNN(Layer):
             grads = layer.backward(grads)
         return grads
 
-    # 其他方法保持不变...
+    def save_model(self, save_path):
+        """保存CNN模型参数"""
+        param_list = {
+            'model_type': 'CNN',  # 标识模型类型
+            'input_shape': self.input_shape,
+            'num_classes': self.num_classes,
+            'flatten_dim': self.flatten_dim,
+            'layers': []
+        }
+
+        for layer in self.layers:
+            layer_info = {'type': layer.__class__.__name__}
+
+            if isinstance(layer, Conv2D):
+                layer_info.update({
+                    'in_channels': layer.in_channels,
+                    'out_channels': layer.out_channels,
+                    'kernel_size': layer.kernel_size,
+                    'stride': layer.stride,
+                    'padding': layer.padding,
+                    'params': {
+                        'W': layer.params['W'],
+                        'b': layer.params['b']
+                    },
+                    'weight_decay': getattr(layer, 'weight_decay', False),
+                    'weight_decay_lambda': getattr(layer, 'weight_decay_lambda', 0)
+                })
+            elif isinstance(layer, Linear):
+                layer_info.update({
+                    'in_dim': layer.in_dim,
+                    'out_dim': layer.out_dim,
+                    'params': {
+                        'W': layer.params['W'],
+                        'b': layer.params['b']
+                    },
+                    'weight_decay': getattr(layer, 'weight_decay', False),
+                    'weight_decay_lambda': getattr(layer, 'weight_decay_lambda', 0)
+                })
+            elif isinstance(layer, MaxPool2D):
+                layer_info['kernel_size'] = layer.kernel_size
+
+            param_list['layers'].append(layer_info)
+
+        with open(save_path, 'wb') as f:
+            pickle.dump(param_list, f)
+
+    def load_model(self, load_path):
+        """加载CNN模型参数"""
+        with open(load_path, 'rb') as f:
+            param_list = pickle.load(f)
+
+        # 检查模型类型是否匹配
+        if param_list.get('model_type') != 'CNN':
+            raise ValueError("Loaded model is not a CNN model")
+
+        # 确保所有必要键都存在
+        required_keys = ['input_shape', 'num_classes', 'flatten_dim', 'layers']
+        for key in required_keys:
+            if key not in param_list:
+                raise KeyError(f"Missing required key in model file: {key}")
+
+        self.input_shape = param_list['input_shape']
+        self.num_classes = param_list['num_classes']
+        self.flatten_dim = param_list['flatten_dim']
+        self.layers = []
+
+        for layer_info in param_list['layers']:
+            layer_type = layer_info['type']
+
+            if layer_type == 'Conv2D':
+                layer = Conv2D(
+                    in_channels=layer_info['in_channels'],
+                    out_channels=layer_info['out_channels'],
+                    kernel_size=layer_info['kernel_size'],
+                    stride=layer_info['stride'],
+                    padding=layer_info['padding']
+                )
+                # 确保参数存在
+                if 'params' not in layer_info:
+                    raise KeyError("Missing 'params' in Conv2D layer info")
+                layer.params = {
+                    'W': layer_info['params']['W'],
+                    'b': layer_info['params']['b']
+                }
+                layer.weight_decay = layer_info.get('weight_decay', False)
+                layer.weight_decay_lambda = layer_info.get('weight_decay_lambda', 0)
+                self.layers.append(layer)
+
+            elif layer_type == 'Linear':
+                layer = Linear(
+                    in_dim=layer_info['in_dim'],
+                    out_dim=layer_info['out_dim']
+                )
+                if 'params' not in layer_info:
+                    raise KeyError("Missing 'params' in Linear layer info")
+                layer.params = {
+                    'W': layer_info['params']['W'],
+                    'b': layer_info['params']['b']
+                }
+                layer.weight_decay = layer_info.get('weight_decay', False)
+                layer.weight_decay_lambda = layer_info.get('weight_decay_lambda', 0)
+                self.layers.append(layer)
+
+            elif layer_type == 'ReLU':
+                self.layers.append(ReLU())
+
+            elif layer_type == 'MaxPool2D':
+                # 从保存的参数中获取kernel_size，如果没有则使用默认值2
+                kernel_size = layer_info.get('kernel_size', 2)
+                self.layers.append(MaxPool2D(kernel_size=kernel_size))
+
+            elif layer_type == 'Flatten':
+                self.flatten = Flatten()
+                self.layers.append(self.flatten)

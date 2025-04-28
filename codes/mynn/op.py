@@ -24,7 +24,8 @@ class Linear(Layer):
         # 初始化权重
         self.W = initialize_method(size=(in_dim, out_dim))
         self.b = initialize_method(size=(1, out_dim))
-
+        self.in_dim = in_dim  # 必须确保有这个属性
+        self.out_dim = out_dim
         # 梯度存储
         self.grads = {'W': None, 'b': None}
         self.params = {'W': self.W, 'b': self.b}
